@@ -1,0 +1,41 @@
+# ==================================
+# Ambientes Virtuais
+# ==================================
+# Ignora a pasta do ambiente virtual padrão
+venv/
+.venv/
+env/
+.env/
+
+# ==================================
+# Arquivos específicos do Python
+# ==================================
+# Pasta de cache do Python
+__pycache__/
+# Arquivos de bytecode compilado
+*.pyc
+*.pyo
+*.pyd
+
+
+
+# ==================================
+# Arquivos de configuração de IDEs (Editores de Código)
+# ==================================
+.idea/
+.vscode/
+
+# ==================================
+# Arquivos de dependências e pacotes
+# ==================================
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# ==================================
+# Arquivos de ambiente
+# ==================================
+# Arquivos .env contêm senhas e chaves de API, nunca devem ir para o repositório
+.env
+*.env
