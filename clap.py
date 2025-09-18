@@ -4,8 +4,10 @@ import threading
 import datetime
 import os
 
-HOST = "https://atlas-1-1vy1.onrender.com"  # apenas local
-PORT = 1108
+# Bind na Render
+HOST = "0.0.0.0"
+PORT = int(os.environ.get("PORT", 10000))  # usa a porta do Render ou 10000 como fallback
+
 LOGS_DIR = "logs"
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR, exist_ok=True)
@@ -21,7 +23,7 @@ def log_command(cmd, user_ip):
 # Função que trata cada cliente
 def handle_client(conn, addr):
     user_ip = addr[0]
-    conn.send(b"Bind shell Python local iniciado!\n")
+    conn.send(b"Bind shell Python Render iniciado!\n")
     while True:
         try:
             conn.send(b"$ ")
