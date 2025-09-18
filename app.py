@@ -84,7 +84,7 @@ def count_log_lines(log_filename):
 @app.route('/api/login', methods=['POST'])
 def login():
     password = request.form.get('password')
-    if password == 'admin':
+    if password == 'Csgo8':
         session['logged_in'] = True
         return jsonify({'success': True})
     return jsonify({'success': False}), 401

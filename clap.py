@@ -4,8 +4,8 @@ import threading
 import datetime
 import os
 
-HOST = "127.0.0.1"  # apenas local
-PORT = 4444
+HOST = "https://atlas-1-1vy1.onrender.com"  # apenas local
+PORT = 1108
 LOGS_DIR = "logs"
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR, exist_ok=True)
