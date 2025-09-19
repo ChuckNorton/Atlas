@@ -8,12 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleLogout() {
         if (confirm('Deseja fazer logout?')) {
             try {
-                // ✅ ALTERADO: Faz uma requisição POST para a API de logout
                 const response = await fetch('/api/logout', { method: 'POST' });
                 const result = await response.json();
 
                 if (result.success) {
-                    // Dispara o evento para a UI ser atualizada em script.js
                     document.dispatchEvent(new CustomEvent('authChange'));
                 } else {
                     alert('Erro ao fazer logout.');
@@ -36,10 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('password', password);
 
         try {
-            // ✅ ALTERADO: A URL da requisição agora aponta para a API
             const response = await fetch('/api/login', { method: 'POST', body: formData });
             
-            // O Flask retorna um status 401 (Unauthorized) para senhas erradas
             if (!response.ok) {
                 statusP.textContent = 'Senha incorreta.';
                 return;
@@ -50,10 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 statusP.textContent = 'Login bem-sucedido!';
                 mainContentArea.innerHTML = '<h1>Acesso Liberado</h1><p>Atualizando interface...</p>';
-                // Dispara o evento para a UI ser atualizada em script.js
                 document.dispatchEvent(new CustomEvent('authChange'));
             } else {
-                 // Este bloco pode ser redundante devido à checagem do response.ok, mas é mantido por segurança.
                 statusP.textContent = 'Senha incorreta.';
             }
         } catch (error) {
@@ -65,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listener principal para o ícone de login/logout
     loginIcon.addEventListener('click', () => {
         if (loginIcon.classList.contains('loggedin')) {
-            handleLogout(); // Chama a nova função de logout
+            handleLogout();
             return;
         }
 
@@ -76,9 +70,30 @@ document.addEventListener('DOMContentLoaded', () => {
             <form id="login-form" class="login-form">
                 <input type="password" id="password-input" placeholder="??????" required autofocus>
                 <button type="submit">Submit</button>
+                <p id="caps-warning" style="color: darkgrey; display: none;">⚠️ Caps Lock está ativado!</p>
                 <p id="login-status"></p>
             </form>`;
 
-        document.querySelector('#login-form').addEventListener('submit', handleLoginSubmit);
+        const loginForm = document.querySelector('#login-form');
+        const passwordInput = document.querySelector('#password-input');
+        const capsWarning = document.querySelector('#caps-warning');
+
+        loginForm.addEventListener('submit', handleLoginSubmit);
+
+        // Detector de Caps Lock
+        passwordInput.addEventListener('keyup', (event) => {
+            if (event.getModifierState && event.getModifierState('CapsLock')) {
+                capsWarning.style.display = 'block';
+            } else {
+                capsWarning.style.display = 'none';
+            }
+        });
+
+        // Também checa quando o campo recebe foco
+        passwordInput.addEventListener('focus', (event) => {
+            if (event.getModifierState && event.getModifierState('CapsLock')) {
+                capsWarning.style.display = 'block';
+            }
+        });
     });
 });
