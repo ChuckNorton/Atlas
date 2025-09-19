@@ -43,7 +43,7 @@ def run_external_script_background():
 # =====================================================================
 
 
-app = Flask(__name__, static_url_path='')
+app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = 'uma_chave_secreta_muito_segura_e_dificil_de_adivinhar'
 
 # --- Configurações ---
