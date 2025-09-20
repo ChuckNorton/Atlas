@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+
     let isLoggedIn = false;
 
     // --- SELETORES GLOBAIS ---
@@ -13,8 +14,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const visitorCountSpan = document.querySelector('#visitor-count');
     const downloadCountSpan = document.querySelector('#download-count');
     const uploadCountSpan = document.querySelector('#upload-count');
+    const homeButton = document.querySelector('#home-button');
 
     // --- FUNÇÕES DE ATUALIZAÇÃO DA UI ---
+    // ✅ NOVA FUNÇÃO AUXILIAR PARA TRADUZIR CÓDIGOS DE CLIMA
+    // Esta função converte o código do tempo da API em um texto e ícone.
+    // A função auxiliar para traduzir os códigos do clima permanece a mesma.
+    // Certifique-se de que ela ainda está no seu código.
+    function getWeatherInfo(weatherCode) {
+        const weatherMap = {
+            0: { description: 'Céu limpo', icon: '☀️' },
+            1: { description: 'Quase limpo', icon: '🌤️' },
+            2: { description: 'Parcialmente nublado', icon: '⛅️' },
+            3: { description: 'Nublado', icon: '☁️' },
+            45: { description: 'Nevoeiro', icon: '🌫️' },
+            48: { description: 'Nevoeiro com geada', icon: '🌫️' },
+            51: { description: 'Garoa leve', icon: '🌦️' },
+            53: { description: 'Garoa moderada', icon: '🌦️' },
+            55: { description: 'Garoa forte', icon: '🌦️' },
+            61: { description: 'Chuva leve', icon: '🌧️' },
+            63: { description: 'Chuva moderada', icon: '🌧️' },
+            65: { description: 'Chuva forte', icon: '🌧️' },
+            80: { description: 'Pancadas de chuva leves', icon: '🌧️' },
+            81: { description: 'Pancadas de chuva moderadas', icon: '🌧️' },
+            82: { description: 'Pancadas de chuva violentas', icon: '🌧️' },
+            95: { description: 'Trovoada', icon: '⛈️' },
+        };
+        return weatherMap[weatherCode] || { description: 'Clima desconhecido', icon: '❓' };
+    }
+
+
+    // ✅ FUNÇÃO ATUALIZADA: AGORA USA GEOLOCALIZAÇÃO POR IP
+    async function loadHomeScreen() {
+        // 1. Obtém e formata a data atual (sem alteração)
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const today = new Date().toLocaleDateString('pt-BR', dateOptions);
+        const capitalizedDate = today.charAt(0).toUpperCase() + today.slice(1);
+
+        // 2. Monta o HTML inicial com placeholders
+        mainContentArea.innerHTML = `
+        <h2>${capitalizedDate}</h2>
+        <div id="weather-info"><p>Carregando previsão do tempo...</p></div>
+        <div id="news-container" class="hm-news-container"></div>`;
+
+        fileInfoHeader.innerHTML = '';
+        downloadButton.style.display = 'none';
+        loadHellenicMoonNews();
+
+        const weatherContainer = document.getElementById('weather-info');
+
+        // 3. Lógica para obter localização por IP e depois o clima
+        try {
+            // ETAPA 1: Pega a localização aproximada pelo IP do usuário
+            const geoResponse = await fetch('http://ip-api.com/json/');
+            const geoData = await geoResponse.json();
+
+            if (geoData.status !== 'success') {
+                throw new Error('Falha ao obter dados de geolocalização por IP.');
+            }
+
+            const lat = geoData.lat;
+            const lon = geoData.lon;
+            const city = geoData.city || 'sua localidade';
+
+            // ETAPA 2: Usa as coordenadas obtidas para pegar a previsão do tempo
+            const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+            const weatherData = await weatherResponse.json();
+
+            const temperature = weatherData.current_weather.temperature;
+            const weatherCode = weatherData.current_weather.weathercode;
+            const { description, icon } = getWeatherInfo(weatherCode);
+
+            // ETAPA 3: Exibe o resultado final na tela
+            weatherContainer.innerHTML = `<p>${icon} ${temperature}°C - ${description} em ${city}</p>`;
+
+        } catch (error) {
+            console.error("Erro ao buscar dados de tempo/localização:", error);
+            weatherContainer.innerHTML = `<p>Não foi possível obter a previsão do tempo.</p>`;
+        }
+    }
+
     function updateUIForLoginState() {
         document.querySelectorAll('.file-category').forEach(cat => {
             const categoryType = cat.dataset.category;
@@ -31,9 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
             list.style.display = 'none';
             list.previousElementSibling.classList.remove('active');
         });
-        mainContentArea.innerHTML = '<h1>Bem-vindo ao Passado</h1><p>Selecione um arquivo para visualizar.</p>';
-        fileInfoHeader.innerHTML = '';
-        downloadButton.style.display = 'none';
+        loadHomeScreen();
     }
 
     // --- FUNÇÕES DE DADOS E LÓGICA ---
@@ -78,27 +155,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const hasFileColumn = logType === 'downloads' || logType === 'uploads';
-            let tableHTML = `
-                <div style="height: 100%; overflow-y: auto;">
-                    <table style="width: 100%; text-align: left; border-collapse: collapse;">
-                        <thead>
-                            <tr>
-                                <th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Data/Hora</th>
-                                <th style="padding: 8px; border-bottom: 1px solid #ffcc00;">IP</th>
-                                ${hasFileColumn ? '<th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Arquivo</th>' : ''}
-                                <th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Dispositivo/Navegador</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
+            let tableHTML = `<div style="height: 100%; overflow-y: auto;"><table style="width: 100%; text-align: left; border-collapse: collapse;"><thead><tr><th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Data/Hora</th><th style="padding: 8px; border-bottom: 1px solid #ffcc00;">IP</th>${hasFileColumn ? '<th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Arquivo</th>' : ''}<th style="padding: 8px; border-bottom: 1px solid #ffcc00;">Dispositivo/Navegador</th></tr></thead><tbody>`;
             logData.forEach(log => {
                 const fileColumn = hasFileColumn ? `<td style="padding: 8px;">${log.file || 'N/A'}</td>` : '';
-                tableHTML += `
-                    <tr>
-                        <td style="padding: 8px;">${log.datetime}</td>
-                        <td style="padding: 8px;">${log.ip}</td>
-                        ${fileColumn}
-                        <td style="padding: 8px; font-size: 0.8rem;">${log.device}</td>
-                    </tr>`;
+                tableHTML += `<tr><td style="padding: 8px;">${log.datetime}</td><td style="padding: 8px;">${log.ip}</td>${fileColumn}<td style="padding: 8px; font-size: 0.8rem;">${log.device}</td></tr>`;
             });
             tableHTML += '</tbody></table></div>';
             mainContentArea.innerHTML = tableHTML;
@@ -123,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('.file-list').forEach(list => {
                     list.innerHTML = '';
                     const toggle = list.previousElementSibling;
-                    if(toggle.classList.contains('active')){
+                    if (toggle.classList.contains('active')) {
                         toggle.click();
                         toggle.click();
                     }
@@ -135,7 +195,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- INICIALIZAÇÃO E EVENT LISTENERS ---
+    /**
+ * Recebe um texto HTML, encontra os primeiros "..." e retorna apenas o conteúdo até esse ponto.
+ * Também remove tags HTML do texto para garantir uma descrição limpa.
+ * @param {string} htmlContent - O conteúdo HTML vindo de item.content.
+ * @returns {string} - O texto formatado e cortado.
+ */
+    function truncateContent(htmlContent) {
+        // 1. Cria um elemento temporário para converter o HTML em texto puro,
+        // removendo todas as tags como <p>, <a>, etc.
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        let textContent = tempDiv.textContent || tempDiv.innerText || "";
+
+        // 2. Procura o índice (a posição) dos "..." no texto puro.
+        const ellipsisIndex = textContent.indexOf('...');
+
+        // 3. Se "..." for encontrado...
+        if (ellipsisIndex !== -1) {
+            // ...retorna o texto desde o início até o final dos "..."
+            return textContent.substring(0, ellipsisIndex + 3);
+        }
+
+        // 4. Se não encontrar "...", retorna o texto puro como ele é.
+        return textContent;
+    }
+    async function loadHellenicMoonNews() {
+        const newsContainer = document.getElementById('news-container');
+        if (!newsContainer) return;
+
+        newsContainer.innerHTML = '<p>Buscando feed de notícias...</p>';
+        const feedUrl = 'https://api.rss2json.com/v1/api.json?rss_url=https://hellenicmoon.com/blog/feed/';
+
+        try {
+            const feedRes = await fetch(feedUrl);
+            const feedData = await feedRes.json();
+
+            if (feedData.status !== 'ok') {
+                newsContainer.innerHTML = `<p>Erro ao carregar o feed de notícias.</p>`;
+                return;
+            }
+
+            newsContainer.innerHTML = '';
+
+            for (const item of feedData.items) {
+                try {
+                    const scrapeUrl = `/api/scrape_article?url=${encodeURIComponent(item.link)}`;
+                    const articleRes = await fetch(scrapeUrl);
+                    if (!articleRes.ok) { continue; }
+                    const articleData = await articleRes.json();
+
+                    const truncatedDescription = truncateContent(item.content);
+
+                    const newsCard = document.createElement('div');
+                    newsCard.classList.add('hm-news-card');
+
+                    newsCard.innerHTML = `
+                        <img src="${articleData.imageUrl}" alt="${articleData.title}" class="hm-news-card__image" onerror="this.style.display='none'">
+                        <div class="hm-news-card__content">
+                            <h3 class="hm-news-card__title">${articleData.title}</h3>
+                            <span class="hm-news-card__category">${articleData.category}</span>
+                           <p class="hm-news-card__description">${truncatedDescription}</p>
+                            <button class="hm-news-card__button">Ler Notícia</button>
+                        </div>`;
+
+                    newsCard.querySelector('.hm-news-card__button').addEventListener('click', () => {
+                        mainContentArea.innerHTML = `
+                            <h3 class="hm-news-card__title">${articleData.title}</h3>
+                            <span class="hm-news-card__category">${articleData.category}</span>
+                            <img src="${articleData.imageUrl}" alt="${articleData.title}" class="hm-news-card__image" onerror="this.style.display='none'">
+                            <div class="news-full-content">${articleData.full_content_html}</div>
+                            <
+                            <button id="back-to-news" class="hm-news-card__button" style="margin-top: 20px;">Voltar</button>`;
+
+                        document.getElementById('back-to-news').addEventListener('click', loadHomeScreen);
+                    });
+                    newsContainer.appendChild(newsCard);
+
+                } catch (e) { console.error(`Erro ao processar o artigo ${item.link}:`, e); }
+            }
+        } catch (err) { newsContainer.innerHTML = `<p>Erro fatal ao carregar notícias: ${err}</p>`; }
+    }
+
     async function initializeApp() {
         try {
             const response = await fetch('/api/check_session');
@@ -148,31 +289,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener('authChange', initializeApp);
-    
+    homeButton.addEventListener('click', loadHomeScreen);
     uploadLink.addEventListener('click', (event) => {
         event.preventDefault();
-        mainContentArea.innerHTML = `
-            <form id="file-upload-form" class="upload-form">
-                <h2>Upload de Arquivo</h2>
-                <input type="file" name="fileToUpload" required>
-                <button type="submit">Enviar</button>
-                <p id="upload-status"></p>
-            </form>`;
+        mainContentArea.innerHTML = `<form id="file-upload-form" class="upload-form"><h2>Upload de Arquivo</h2><input type="file" name="fileToUpload" required><button type="submit">Enviar</button><p id="upload-status"></p></form>`;
         fileInfoHeader.innerHTML = '';
         downloadButton.style.display = 'none';
         document.querySelector('#file-upload-form').addEventListener('submit', handleUpload);
     });
-
     statsTriggers.forEach(trigger => {
         trigger.addEventListener('click', () => {
             if (isLoggedIn) {
-                // ✅ CORREÇÃO: Adiciona 's' para corresponder à API (ex: 'visitor' -> 'visitors')
                 const logType = trigger.id.replace('-log-trigger', '') + 's';
                 displayLog(logType);
             }
         });
     });
-
     categoryToggles.forEach(toggle => {
         toggle.addEventListener('click', async () => {
             const fileList = toggle.nextElementSibling;
@@ -180,10 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (fileList.innerHTML === '' && folder) {
                 try {
                     const response = await fetch(`/api/files/${folder}`);
-                    if (!response.ok) {
-                        fileList.innerHTML = '<li>Acesso negado.</li>';
-                        return;
-                    }
+                    if (!response.ok) { fileList.innerHTML = '<li>Acesso negado.</li>'; return; }
                     const filesData = await response.json();
                     if (filesData.length === 0) {
                         fileList.innerHTML = '<li>Nenhum arquivo encontrado.</li>';
@@ -205,45 +334,32 @@ document.addEventListener('DOMContentLoaded', () => {
             fileList.style.display = fileList.style.display === 'block' ? 'none' : 'block';
         });
     });
-
     rightSidebar.addEventListener('click', async (event) => {
         const link = event.target.closest('a');
         const downloadIcon = event.target.closest('.download-icon');
         const listItem = event.target.closest('li');
-
         if (!listItem) return;
-
         const folder = listItem.dataset.folder;
         const fileName = listItem.dataset.filename;
         const downloadUrl = `/api/download/${folder}/${fileName}`;
         const viewFilePath = `uploads/${folder}/${fileName}`;
-
-        if (downloadIcon) {
-            window.location.href = downloadUrl;
-            return;
-        }
-
+        if (downloadIcon) { window.location.href = downloadUrl; return; }
         if (link) {
             event.preventDefault();
             mainContentArea.innerHTML = '<h1>Carregando...</h1>';
             fileInfoHeader.innerHTML = 'Buscando informações de origem...';
             downloadButton.style.display = 'none';
-
             try {
                 const infoResponse = await fetch(`/api/file_info/${fileName}`);
                 const fileInfo = await infoResponse.json();
                 const modifiedTimestamp = parseInt(listItem.dataset.modified) * 1000;
                 const modifiedDate = new Date(modifiedTimestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
                 if (fileInfo.found) {
                     fileInfoHeader.innerHTML = `<strong>Origem:</strong> IP ${fileInfo.ip} | <strong>Upload:</strong> ${fileInfo.datetime} | <strong>Arquivo Modificado:</strong> ${modifiedDate}`;
                 } else {
                     fileInfoHeader.innerHTML = `<strong>Origem:</strong> Local | <strong>Arquivo Modificado:</strong> ${modifiedDate}`;
                 }
-            } catch (e) {
-                fileInfoHeader.innerHTML = `Informações de origem indisponíveis.`;
-            }
-
+            } catch (e) { fileInfoHeader.innerHTML = `Informações de origem indisponíveis.`; }
             try {
                 const extension = fileName.split('.').pop().toLowerCase();
                 let contentSet = false;
@@ -259,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     mainContentArea.innerHTML = `<iframe src="${viewFilePath}" width="100%" height="100%"></iframe>`;
                     contentSet = true;
                 }
-                
                 if (contentSet) {
                     downloadButton.href = downloadUrl;
                     downloadButton.style.display = 'flex';
@@ -267,7 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mainContentArea.innerHTML = `<h1>Visualização não suportada</h1><p>Clique <a href="${downloadUrl}">aqui</a> para baixar o arquivo.</p>`;
                     downloadButton.style.display = 'none';
                 }
-            } catch (error) { 
+            } catch (error) {
                 console.error('Erro ao carregar conteúdo:', error);
                 mainContentArea.innerHTML = '<h1>Erro ao carregar o conteúdo do arquivo.</h1>';
             }

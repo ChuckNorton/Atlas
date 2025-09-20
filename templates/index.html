@@ -11,20 +11,31 @@
     
     <div class="background-container">
         <header class="stats-bar">
-            <div class="stat-item" id="visitor-log-trigger">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                Visitantes: <span id="visitor-count">0</span>
+            <div class="stats-group-left">
+                <div class="stat-item" id="home-button" title="Voltar à tela inicial">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8h5z"/></svg>
+                </div>
             </div>
-            <div class="stat-item" id="download-log-trigger">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                Downloads: <span id="download-count">0</span>
+
+            <div class="stats-group-center">
+                <div class="stat-item" id="visitor-log-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    <span>Visitantes: </span><span id="visitor-count">0</span>
+                </div>
+                <div class="stat-item" id="download-log-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <span>Downloads: </span><span id="download-count">0</span>
+                </div>
+                <div class="stat-item" id="upload-log-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M9 16h6v-6h4l-8-8-8 8h4v6zm-4 2h14v2H5v-2z"/></svg>
+                    <span>Uploads: </span><span id="upload-count">0</span>
+                </div>
             </div>
-            <div class="stat-item" id="upload-log-trigger">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="stat-icon"><path d="M9 16h6v-6h4l-8-8-8 8h4v6zm-4 2h14v2H5v-2z"/></svg>
-                Uploads: <span id="upload-count">0</span>
-            </div>
-            <div id="login-icon-container">
-                <img id="login-icon" class="stat-icon" src="/static/font/plt.svg" alt="Status do Login">
+
+            <div class="stats-group-right">
+                <div id="login-icon-container">
+                    <img id="login-icon" class="stat-icon" src="/static/font/plt.svg" alt="Status do Login">
+                </div>
             </div>
         </header>
         <main class="main-grid">
@@ -41,8 +52,8 @@
             <section class="center-content">
                 <div id="file-info-header"></div>
                 <div id="main-content-area">
-                    <h1>Bem-vindo ao Passado</h1>
-                    <p>Este é o container central para o conteúdo principal.</p>
+                    <p>Carregando o JavaScript.</p>
+                    <div id="news-container"></div>
                 </div>
                 <a href="#" id="download-button" style="display:none;" download>
                    

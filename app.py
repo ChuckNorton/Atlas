@@ -5,9 +5,12 @@ from datetime import datetime
 import time
 import subprocess
 import sys
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin 
 
 # =====================================================================
-# ✅ INÍCIO DA SEÇÃO CORRIGIDA PARA EXECUÇÃO EM BACKGROUND
+# SEÇÃO DE EXECUÇÃO EM BACKGROUND
 # =====================================================================
 def run_external_script_background():
     """
@@ -21,32 +24,20 @@ def run_external_script_background():
             return
 
         print(f"--- Disparando script externo em background: {script_path} ---")
-
-        # CORREÇÃO: Usando subprocess.Popen em vez de .run()
-        # Popen inicia o processo e não espera por ele. O app continua imediatamente.
-        # As saídas (stdout/stderr) são redirecionadas para DEVNULL para não travar o processo principal.
         subprocess.Popen(
             [sys.executable, script_path],
-            stdout=subprocess.DEVNULL, # Descarta a saída padrão
-            stderr=subprocess.DEVNULL  # Descarta a saída de erro
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
         )
-        
         print("--- Script disparado. O servidor continuará a iniciar. ---")
-
-    except FileNotFoundError:
-        print(f"ERRO: O arquivo 'clap.py' não foi encontrado.")
     except Exception as e:
         print(f"Um erro inesperado ocorreu ao tentar disparar o script: {e}")
 
 # =====================================================================
-# ✅ FIM DA SEÇÃO CORRIGIDA
+# CONFIGURAÇÃO DO APP FLASK
 # =====================================================================
-
-
 app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = 'uma_chave_secreta_muito_segura_e_dificil_de_adivinhar'
-
-# --- Configurações ---
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 LOGS_FOLDER = os.path.join(BASE_DIR, 'logs')
@@ -57,29 +48,20 @@ run_external_script_background()
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['LOGS_FOLDER'] = LOGS_FOLDER
 
-# Garante que os diretórios de upload e logs existam
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'img'), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'txt'), exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_FOLDER, 'arq'), exist_ok=True)
 os.makedirs(LOGS_FOLDER, exist_ok=True)
 
-# (O restante do seu código app.py continua aqui, sem alterações)
-# ...
-# ... Cole o resto do código do app.py aqui
-# ...
-
-
-# --- Funções Auxiliares (Lógica de Log igual ao PHP) ---
-
+# --- Funções Auxiliares ---
 def count_log_lines(log_filename):
-    """Conta as linhas de um arquivo de log."""
     log_path = os.path.join(app.config['LOGS_FOLDER'], log_filename)
     if not os.path.exists(log_path):
         return 0
-    with open(log_path, 'r') as f:
+    with open(log_path, 'r', encoding='utf-8') as f:
         return len(f.readlines())
 
-# --- Rotas da API (Corrigidas) ---
+# --- Rotas da API ---
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -107,7 +89,7 @@ def upload_file():
     if file.filename == '':
         return jsonify({'success': False, 'message': 'Nome de arquivo vazio'}), 400
     
-    filename = os.path.basename(file.filename) # Segurança
+    filename = os.path.basename(file.filename)
     file_type = file.mimetype.split('/')[0]
     
     subdir = 'arq'
@@ -119,10 +101,9 @@ def upload_file():
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], subdir)
     file.save(os.path.join(save_path, filename))
     
-    # Log no formato do PHP
     log_file = os.path.join(app.config['LOGS_FOLDER'], 'uploads.log')
     log_entry = f"{request.remote_addr}|{int(time.time())}|{request.user_agent.string}|{filename}\n"
-    with open(log_file, 'a') as f:
+    with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_entry)
 
     return jsonify({'success': True, 'message': 'Arquivo enviado com sucesso!'})
@@ -149,14 +130,13 @@ def list_files(folder):
 
 
 @app.route('/api/download/<category>/<filename>')
-def download_file(category, filename):
+def download_file_route(category, filename):
     if category in ['img', 'txt'] and not session.get('logged_in'):
          return "Acesso negado", 403
 
-    # Log no formato do PHP
     log_file = os.path.join(app.config['LOGS_FOLDER'], 'downloads.log')
     log_entry = f"{request.remote_addr}|{int(time.time())}|{request.user_agent.string}|{filename}\n"
-    with open(log_file, 'a') as f:
+    with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_entry)
 
     directory = os.path.join(app.config['UPLOAD_FOLDER'], category)
@@ -171,7 +151,7 @@ def tracker():
     is_unique_today = True
 
     if os.path.exists(log_file):
-        with open(log_file, 'r') as f:
+        with open(log_file, 'r', encoding='utf-8') as f:
             for line in f:
                 parts = line.strip().split('|')
                 if len(parts) >= 2 and parts[0] == ip:
@@ -182,7 +162,7 @@ def tracker():
     
     if is_unique_today:
         log_entry = f"{ip}|{int(time.time())}|{request.user_agent.string}\n"
-        with open(log_file, 'a') as f:
+        with open(log_file, 'a', encoding='utf-8') as f:
             f.write(log_entry)
 
     return jsonify({'success': True})
@@ -211,8 +191,8 @@ def get_logs(log_type):
         return jsonify([])
 
     log_data = []
-    with open(log_path, 'r') as f:
-        lines = reversed(f.readlines()) # Ler em ordem reversa como no PHP
+    with open(log_path, 'r', encoding='utf-8') as f:
+        lines = reversed(f.readlines())
         for line in lines:
             parts = line.strip().split('|')
             entry = {
@@ -236,7 +216,7 @@ def get_file_info(filename):
     if not os.path.exists(log_path):
         return jsonify({'found': False})
 
-    with open(log_path, 'r') as f:
+    with open(log_path, 'r', encoding='utf-8') as f:
         for line in reversed(f.readlines()):
             parts = line.strip().split('|')
             if len(parts) >= 4 and parts[3] == filename:
@@ -250,7 +230,103 @@ def get_file_info(filename):
     return jsonify({'found': False})
 
 
-# --- Rotas para servir arquivos estáticos e o frontend ---
+# --- ROTA PARA WEB SCRAPING ---
+
+def get_best_image_from_srcset(srcset):
+    if not srcset: return None
+    try:
+        sources = [s.strip().split(' ') for s in srcset.split(',')]
+        sized_sources = [s for s in sources if len(s) == 2 and s[1].endswith('w')]
+        if not sized_sources: return sources[0][0]
+        best_source = max(sized_sources, key=lambda s: int(s[1][:-1]))
+        return best_source[0]
+    except Exception: return None
+
+# Lembre-se de ter "from urllib.parse import urljoin" no topo do seu arquivo
+
+@app.route('/api/scrape_article')
+def scrape_article():
+    article_url = request.args.get('url')
+    if not article_url:
+        return jsonify({'error': 'Parâmetro "url" é obrigatório'}), 400
+    
+    base_url = "https://hellenicmoon.com"
+    headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+
+    try:
+        response = requests.get(article_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # --- Extração de dados (sem alterações) ---
+        title_tag = soup.select_one('h1.entry-title, h1')
+        title = title_tag.get_text(strip=True) if title_tag else 'Título não encontrado'
+
+        category_tag = soup.select_one('span.category a, .cat-links a')
+        category = category_tag.get_text(strip=True) if category_tag else 'Sem Categoria'
+
+        summary_tag = soup.select_one('div.entry-content p, div.td-post-content p')
+        summary = summary_tag.get_text(strip=True) if summary_tag else ''
+
+        image_url = ''
+        image_tag = soup.select_one('img.wp-post-image')
+        if not image_tag:
+            content_area = soup.select_one('div.entry-content, div.td-post-content')
+            if content_area: image_tag = content_area.select_one('img')
+        if image_tag:
+            if image_tag.get('data-srcset'): image_url = get_best_image_from_srcset(image_tag.get('data-srcset'))
+            elif image_tag.get('data-src'): image_url = image_tag.get('data-src')
+            elif image_tag.get('srcset'): image_url = get_best_image_from_srcset(image_tag.get('srcset'))
+            else: image_url = image_tag.get('src', '')
+        if not image_url or 'data:image/svg+xml' in image_url:
+            og_image_tag = soup.select_one('meta[property="og:image"]')
+            if og_image_tag: image_url = og_image_tag.get('content', '')
+        if image_url and image_url.startswith('/'):
+            image_url = urljoin(base_url, image_url)
+        
+        # ===================================================================
+        # ✅ INÍCIO DAS NOVAS ALTERAÇÕES
+        # ===================================================================
+        full_content_html = ''
+        content_tag = soup.select_one('div.entry-content, div.td-post-content')
+        
+        if content_tag:
+            # 1. CORRIGE URLs RELATIVAS de IMAGENS e VÍDEOS dentro do conteúdo
+            media_tags = content_tag.find_all(['img', 'iframe'])
+            for tag in media_tags:
+                # Checa os atributos 'src' e 'srcset' para garantir que sejam absolutos
+                for attr in ['src', 'srcset', 'data-src', 'data-srcset']:
+                    if tag.has_attr(attr):
+                        # Converte URLs que começam com "/" para URLs completas
+                        if tag[attr].strip().startswith('/'):
+                           tag[attr] = urljoin(base_url, tag[attr])
+            
+            # Converte o conteúdo (com URLs corrigidas) para string
+            full_content_html = str(content_tag)
+            
+            # 2. CORTA o conteúdo no ponto especificado
+            cutoff_phrase = "Subscribe to get the latest posts sent to your email."
+            cutoff_index = full_content_html.find(cutoff_phrase)
+            
+            if cutoff_index != -1:
+                # Se a frase for encontrada, corta o HTML até ela
+                full_content_html = full_content_html[:cutoff_index]
+        else:
+            full_content_html = '<p>Conteúdo completo não encontrado.</p>'
+
+        # ===================================================================
+        # ✅ FIM DAS NOVAS ALTERAÇÕES
+        # ===================================================================
+
+        data = {
+            'title': title, 'category': category, 'summary': summary, 'imageUrl': image_url,
+            'full_content_html': full_content_html
+        }
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': f'Ocorreu um erro durante o scraping: {e}'}), 500
+
+# --- ROTAS PARA SERVIR ARQUIVOS ---
 
 @app.route('/')
 def index():
@@ -258,7 +334,6 @@ def index():
 
 @app.route('/<path:folder>/<path:filename>')
 def serve_static_files(folder, filename):
-    # Rota para servir CSS, JS, fontes, etc.
     return send_from_directory(os.path.join(BASE_DIR, folder), filename)
 
 if __name__ == '__main__':
