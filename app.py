@@ -7,7 +7,9 @@ import subprocess
 import sys
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin 
+from urllib.parse import urljoin
+# ✅ 1. IMPORTAÇÃO ADICIONADA
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # =====================================================================
 # SEÇÃO DE EXECUÇÃO EM BACKGROUND
@@ -37,6 +39,13 @@ def run_external_script_background():
 # CONFIGURAÇÃO DO APP FLASK
 # =====================================================================
 app = Flask(__name__, static_url_path='/static', static_folder='static')
+
+# ✅ 2. APLICAÇÃO DO MIDDLEWARE PROXYFIX
+# Esta linha corrige o problema do IP. Ela instrui o Flask a confiar
+# no cabeçalho enviado pelo proxy reverso para obter o IP real do visitante.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+
 app.secret_key = 'uma_chave_secreta_muito_segura_e_dificil_de_adivinhar'
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
@@ -102,6 +111,7 @@ def upload_file():
     file.save(os.path.join(save_path, filename))
     
     log_file = os.path.join(app.config['LOGS_FOLDER'], 'uploads.log')
+    # Nenhuma mudança necessária aqui, request.remote_addr agora terá o IP correto
     log_entry = f"{request.remote_addr}|{int(time.time())}|{request.user_agent.string}|{filename}\n"
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_entry)
@@ -132,9 +142,10 @@ def list_files(folder):
 @app.route('/api/download/<category>/<filename>')
 def download_file_route(category, filename):
     if category in ['img', 'txt'] and not session.get('logged_in'):
-         return "Acesso negado", 403
+        return "Acesso negado", 403
 
     log_file = os.path.join(app.config['LOGS_FOLDER'], 'downloads.log')
+    # Nenhuma mudança necessária aqui
     log_entry = f"{request.remote_addr}|{int(time.time())}|{request.user_agent.string}|{filename}\n"
     with open(log_file, 'a', encoding='utf-8') as f:
         f.write(log_entry)
@@ -146,6 +157,7 @@ def download_file_route(category, filename):
 @app.route('/api/tracker', methods=['POST'])
 def tracker():
     log_file = os.path.join(app.config['LOGS_FOLDER'], 'visitors.log')
+    # Nenhuma mudança necessária aqui
     ip = request.remote_addr
     today = datetime.now().strftime('%Y-%m-%d')
     is_unique_today = True
@@ -242,8 +254,6 @@ def get_best_image_from_srcset(srcset):
         return best_source[0]
     except Exception: return None
 
-# Lembre-se de ter "from urllib.parse import urljoin" no topo do seu arquivo
-
 @app.route('/api/scrape_article')
 def scrape_article():
     article_url = request.args.get('url')
@@ -284,39 +294,26 @@ def scrape_article():
         if image_url and image_url.startswith('/'):
             image_url = urljoin(base_url, image_url)
         
-        # ===================================================================
-        # ✅ INÍCIO DAS NOVAS ALTERAÇÕES
-        # ===================================================================
         full_content_html = ''
         content_tag = soup.select_one('div.entry-content, div.td-post-content')
         
         if content_tag:
-            # 1. CORRIGE URLs RELATIVAS de IMAGENS e VÍDEOS dentro do conteúdo
             media_tags = content_tag.find_all(['img', 'iframe'])
             for tag in media_tags:
-                # Checa os atributos 'src' e 'srcset' para garantir que sejam absolutos
                 for attr in ['src', 'srcset', 'data-src', 'data-srcset']:
                     if tag.has_attr(attr):
-                        # Converte URLs que começam com "/" para URLs completas
                         if tag[attr].strip().startswith('/'):
-                           tag[attr] = urljoin(base_url, tag[attr])
+                            tag[attr] = urljoin(base_url, tag[attr])
             
-            # Converte o conteúdo (com URLs corrigidas) para string
             full_content_html = str(content_tag)
             
-            # 2. CORTA o conteúdo no ponto especificado
             cutoff_phrase = "Subscribe to get the latest posts sent to your email."
             cutoff_index = full_content_html.find(cutoff_phrase)
             
             if cutoff_index != -1:
-                # Se a frase for encontrada, corta o HTML até ela
                 full_content_html = full_content_html[:cutoff_index]
         else:
             full_content_html = '<p>Conteúdo completo não encontrado.</p>'
-
-        # ===================================================================
-        # ✅ FIM DAS NOVAS ALTERAÇÕES
-        # ===================================================================
 
         data = {
             'title': title, 'category': category, 'summary': summary, 'imageUrl': image_url,
@@ -337,4 +334,6 @@ def serve_static_files(folder, filename):
     return send_from_directory(os.path.join(BASE_DIR, folder), filename)
 
 if __name__ == '__main__':
+    # Em desenvolvimento local, o app.run não usa o ProxyFix, o que é o comportamento esperado.
+    # Em produção, um servidor WSGI (como Gunicorn) usará o objeto 'app', que já está "envelopado" pelo ProxyFix.
     app.run(debug=True, host='0.0.0.0', port=5000)
