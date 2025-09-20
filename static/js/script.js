@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Lógica para obter localização por IP e depois o clima
         try {
             // ETAPA 1: Pega a localização aproximada pelo IP do usuário
-            const geoResponse = await fetch('http://ip-api.com/json/');
+            const geoResponse = await fetch('https://ip-api.com/json/');
             const geoData = await geoResponse.json();
 
             if (geoData.status !== 'success') {
